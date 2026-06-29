@@ -4,13 +4,14 @@ import { Header } from "@/sections/Header";
 import { HomePage } from "@/sections/HomePage";
 import { SearchResultsPage } from "@/sections/SearchResultsPage";
 import { HistoryPage } from "@/sections/HistoryPage";
+import { SupplierPage } from "@/sections/SupplierPage";
 import { Footer } from "@/sections/Footer";
 import { LoginPage } from "@/sections/LoginPage";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import type { SearchParams } from "@/types";
 import { getSession, logout, initAccounts, type Session } from "@/lib/auth";
 
-type Page = "home" | "search" | "history";
+type Page = "home" | "search" | "history" | "supplier";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -29,6 +30,7 @@ export default function App() {
 
   const goHome = useCallback(() => setPage("home"), []);
   const goHistory = useCallback(() => setPage("history"), []);
+  const goSupplier = useCallback(() => setPage("supplier"), []);
 
   const doSearch = useCallback((params: SearchParams) => {
     setSearchParams(params);
@@ -68,6 +70,7 @@ export default function App() {
         onSearch={doSearch}
         onHome={goHome}
         onHistory={goHistory}
+        onSupplier={goSupplier}
         currentPage={page}
         session={session}
         onLogout={handleLogout}
@@ -79,6 +82,7 @@ export default function App() {
           <SearchResultsPage params={searchParams} onSearch={doSearch} />
         )}
         {page === "history" && <HistoryPage onSearch={doSearch} />}
+        {page === "supplier" && <SupplierPage />}
       </main>
       <Footer />
 
