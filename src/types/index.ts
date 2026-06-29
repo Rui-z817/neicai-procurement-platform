@@ -27,8 +27,14 @@ export interface Supplier {
   id: string;
   name: string;
   region: string; // 所在地
-  contact: string; // 联系方式
+  contact: string; // 联系方式（电话）
   level: string; // 供应商等级
+  address?: string; // 详细地址
+  mainProducts?: string[]; // 主营材料
+  brand?: string; // 品牌
+  website?: string; // 官网
+  categoryIds?: string[]; // 经营材料分类
+  source?: string; // 数据来源
 }
 
 // 市场价记录
