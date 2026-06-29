@@ -1,0 +1,94 @@
+name: 每月自动更新南京信息价数据
+
+on:
+  schedule:
+    # 每月2日凌晨3点执行（北京时间），信息价通常月末/月初发布
+    - cron: '0 19 1 * *'  # UTC 19:00 = 北京时间 03:00 每月2日
+  workflow_dispatch: # 支持手动触发
+
+permissions:
+  contents: write  # 允许提交代码
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装 Python 依赖
+        run: pip install pdfplumber requests
+
+      - name: 抓取南京信息价列表
+        id: fetch
+        run: |
+          echo "→ 开始抓取南京造价协会信息价列表..."
+          node scripts/fetch_njzjxh.cjs || echo "抓取失败，使用现有数据"
+          echo "→ 抓取完成"
+
+      - name: 下载最新一期PDF
+        run: |
+          echo "→ 下载最新一期信息价PDF..."
+          node scripts/download_latest_pdf.cjs || echo "下载失败"
+          echo "→ 下载完成"
+
+      - name: 解析PDF为结构化数据
+        run: |
+          echo "→ 解析PDF价格数据..."
+          python scripts/parse_pdf.py || echo "解析失败"
+          echo "→ 解析完成"
+
+      - name: 转换为系统数据格式
+        run: |
+          echo "→ 转换数据格式..."
+          node scripts/convert_pdf_prices.cjs || echo "转换失败"
+          echo "→ 转换完成"
+
+      - name: 检查数据变更
+        id: changes
+        run: |
+          git add src/data/infoPriceMaterials.ts src/data/nanjingInfoPrices.ts
+          if git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "无数据变更"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "检测到数据变更"
+          fi
+
+      - name: 提交更新
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(data): 自动更新南京信息价数据 ($(date +'%Y-%m-%d'))
+
+          - 自动抓取最新一期信息价PDF
+          - 解析PDF价格数据
+          - 更新 infoPriceMaterials.ts
+          - 更新 nanjingInfoPrices.ts"
+
+      - name: 推送变更
+        if: steps.changes.outputs.changed == 'true'
+        run: git push
+
+      - name: 输出摘要
+        run: |
+          echo "========================================="
+          echo "信息价数据更新完成"
+          echo "时间: $(date)"
+          echo "========================================="
+          if [ -f src/data/infoPriceMaterials.ts ]; then
+            echo "价格数据文件: src/data/infoPriceMaterials.ts"
+            grep -c "materialName" src/data/infoPriceMaterials.ts || echo "0"
+          fi
