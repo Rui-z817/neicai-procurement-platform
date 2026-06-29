@@ -1,18 +1,30 @@
 import { useState } from "react";
-import { Search, Building2, History, Home } from "lucide-react";
+import { Search, Building2, History, Home, LogOut, UserCircle, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { allRegions, categories } from "@/data/materials";
 import type { SearchParams } from "@/types";
+import type { Session } from "@/lib/auth";
 
 interface HeaderProps {
   onSearch: (params: SearchParams) => void;
   onHome: () => void;
   onHistory: () => void;
   currentPage: string;
+  session: Session | null;
+  onLogout: () => void;
+  onChangePassword: () => void;
 }
 
-export function Header({ onSearch, onHome, onHistory, currentPage }: HeaderProps) {
+export function Header({ onSearch, onHome, onHistory, currentPage, session, onLogout, onChangePassword }: HeaderProps) {
   const [keyword, setKeyword] = useState("");
   const [region, setRegion] = useState("全部");
   const [category, setCategory] = useState("全部");
@@ -59,6 +71,38 @@ export function Header({ onSearch, onHome, onHistory, currentPage }: HeaderProps
             >
               <History className="w-4 h-4 mr-1" /> 历史记录
             </Button>
+
+            {/* 用户菜单 */}
+            {session && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 ml-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm ring-1 ring-white/20 transition text-white text-sm">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-300 to-cyan-200 flex items-center justify-center text-[hsl(217,72%,28%)] font-semibold text-xs">
+                      {session.displayName.charAt(0)}
+                    </div>
+                    <span className="hidden sm:inline">{session.displayName}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">{session.displayName}</span>
+                    <span className="text-xs text-slate-400 font-normal">
+                      账号：{session.username} · {session.role === "admin" ? "管理员" : "用户"}
+                    </span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onChangePassword} className="cursor-pointer">
+                    <KeyRound className="w-4 h-4 mr-2 text-slate-500" />
+                    修改密码
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-red-600 focus:text-red-700 focus:bg-red-50">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
         </div>
       </div>
