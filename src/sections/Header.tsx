@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Building2, History, Home, LogOut, UserCircle, KeyRound } from "lucide-react";
+import { Search, Building2, History, Home, LogOut, UserCircle, KeyRound, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,13 +18,14 @@ interface HeaderProps {
   onSearch: (params: SearchParams) => void;
   onHome: () => void;
   onHistory: () => void;
+  onSupplier: () => void;
   currentPage: string;
   session: Session | null;
   onLogout: () => void;
   onChangePassword: () => void;
 }
 
-export function Header({ onSearch, onHome, onHistory, currentPage, session, onLogout, onChangePassword }: HeaderProps) {
+export function Header({ onSearch, onHome, onHistory, onSupplier, currentPage, session, onLogout, onChangePassword }: HeaderProps) {
   const [keyword, setKeyword] = useState("");
   const [region, setRegion] = useState("全部");
   const [category, setCategory] = useState("全部");
@@ -70,6 +71,14 @@ export function Header({ onSearch, onHome, onHistory, currentPage, session, onLo
               className="text-white hover:bg-white/15 hover:text-white"
             >
               <History className="w-4 h-4 mr-1" /> 历史记录
+            </Button>
+            <Button
+              variant={currentPage === "supplier" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={onSupplier}
+              className="text-white hover:bg-white/15 hover:text-white"
+            >
+              <Users className="w-4 h-4 mr-1" /> 供货商
             </Button>
 
             {/* 用户菜单 */}
