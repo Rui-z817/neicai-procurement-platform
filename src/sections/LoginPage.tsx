@@ -46,12 +46,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
   };
 
-  const fillTestAccount = () => {
-    setUsername("123456");
-    setPassword("123456");
-    setError("");
-  };
-
   return (
     <div className="min-h-screen flex bg-slate-50">
       {/* 左侧品牌视觉区 */}
@@ -203,13 +197,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 />
                 <span className="text-sm text-slate-600">保持登录状态</span>
               </label>
-              <button
-                type="button"
-                onClick={fillTestAccount}
-                className="text-xs text-[hsl(217,72%,40%)] hover:text-[hsl(217,72%,30%)] hover:underline transition"
-              >
-                填入测试账户
-              </button>
             </div>
 
             {/* 错误提示 */}
@@ -239,21 +226,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               )}
             </Button>
           </form>
-
-          {/* 测试提示 */}
-          <div className="mt-6 p-3.5 rounded-lg bg-blue-50/60 border border-blue-100">
-            <div className="flex items-start gap-2.5">
-              <Shield className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-blue-700/80 leading-relaxed">
-                <span className="font-semibold">测试账户：</span>
-                用户名 <code className="px-1 py-0.5 rounded bg-blue-100 text-blue-700 font-mono">123456</code>
-                {"  ·  "}
-                密码 <code className="px-1 py-0.5 rounded bg-blue-100 text-blue-700 font-mono">123456</code>
-                <br />
-                <span className="text-blue-600/60 mt-1 block">登录后可在系统内修改密码</span>
-              </div>
-            </div>
-          </div>
 
           {/* 底部信息 */}
           <div className="mt-8 text-center text-xs text-slate-400">
