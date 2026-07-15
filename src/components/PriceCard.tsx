@@ -1,4 +1,4 @@
-import { MapPin, Calendar, FileDown, Factory, BadgeCheck } from "lucide-react";
+import { MapPin, Calendar, FileDown, Factory, BadgeCheck, ExternalLink } from "lucide-react";
 import type { MarketPrice } from "@/types";
 import { categories } from "@/data/materials";
 
@@ -11,6 +11,16 @@ export function PriceCard({ item, onExport }: PriceCardProps) {
   const cat = categories.find((c) => c.children.some((ch) => ch.id === item.categoryId));
   // 判断是否为信息价价格（brand 为 "南京信息价" 或 supplier.id 为 "nj-info-price"）
   const isInfoPrice = item.brand === "南京信息价" || item.supplier.id === "nj-info-price";
+
+  // 提取月份显示
+  const monthLabel = item.month ? `${item.month}月` : "";
+
+  // 打开信息价 PDF
+  const handleOpenPdf = () => {
+    if (item.pdfUrl) {
+      window.open(item.pdfUrl, "_blank");
+    }
+  };
 
   return (
     <div
@@ -69,7 +79,7 @@ export function PriceCard({ item, onExport }: PriceCardProps) {
         <span>
           <span className="text-slate-400">{isInfoPrice ? "来源" : "品牌"}:</span>{" "}
           <span className={`font-medium ${isInfoPrice ? "text-amber-600" : "text-primary"}`}>
-            {item.brand}
+            {isInfoPrice ? `南京信息价${monthLabel ? `（${monthLabel}）` : ""}` : item.brand}
           </span>
         </span>
       </div>
@@ -91,14 +101,22 @@ export function PriceCard({ item, onExport }: PriceCardProps) {
             <span className="flex items-center gap-0.5"><Calendar className="w-3 h-3" />{item.date}</span>
           </div>
         </div>
-        {onExport && (
+        {isInfoPrice && item.pdfUrl ? (
+          <button
+            onClick={handleOpenPdf}
+            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
+            title={`打开${monthLabel}信息价PDF`}
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> 信息价PDF
+          </button>
+        ) : onExport ? (
           <button
             onClick={() => onExport(item)}
             className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded border border-primary/30 text-primary hover:bg-primary hover:text-white transition"
           >
             <FileDown className="w-3.5 h-3.5" /> 报价单
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );
