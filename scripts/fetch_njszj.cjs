@@ -59,17 +59,46 @@ function fetch(url, options = {}) {
 // 解析列表页，提取所有信息价条目
 function parseListItems(html) {
   const items = [];
-  // 格式: <a href="/zjweb/MessageShow.aspx?Id=xxx">标题</a> [日期]
+  // 格式1: <a href="/zjweb/MessageShow.aspx?Id=xxx">标题</a> [日期]
+  // 格式2: <a href="javascript:popwin('/zjweb/MessageShow.aspx?Id=xxx')">标题</a> [日期]
   const re = /<a[^>]*href="([^"]*MessageShow\.aspx\?Id=[^"]+)"[^>]*>\s*([\s\S]*?)\s*<\/a>[\s\S]*?\[([^\]]+)\]/g;
   let m;
   while ((m = re.exec(html)) !== null) {
     const title = m[2].replace(/<[^>]+>/g, "").trim();
     const date = m[3].trim();
-    const url = m[1].startsWith("http") ? m[1] : BASE + m[1];
+    let rawUrl = m[1];
+
+    // 处理 javascript:popwin('/zjweb/MessageShow.aspx?Id=xxx') 格式
+    const popwinMatch = rawUrl.match(/popwin\(['"]([^'"]+)['"]\)/);
+    if (popwinMatch) {
+      rawUrl = popwinMatch[1];
+    }
+
+    // 处理 javascript: 开头的其他情况
+    if (rawUrl.startsWith("javascript:")) {
+      const inner = rawUrl.match(/['"]([^'"]+MessageShow[^'"]+)['"]/);
+      if (inner) rawUrl = inner[1];
+    }
+
+    const url = rawUrl.startsWith("http") ? rawUrl : BASE + rawUrl;
     if (title.includes("信息价格")) {
       items.push({ title, date, url });
     }
   }
+
+  // 备用正则：匹配 javascript:popwin('...') 格式
+  if (items.length === 0) {
+    const re2 = /javascript:popwin\(['"]([^'"]+MessageShow\.aspx\?Id=[^'"]+)['"]\)[^>]*>\s*([\s\S]*?)\s*<\/a>[\s\S]*?\[([^\]]+)\]/g;
+    while ((m = re2.exec(html)) !== null) {
+      const title = m[2].replace(/<[^>]+>/g, "").trim();
+      const date = m[3].trim();
+      const url = m[1].startsWith("http") ? m[1] : BASE + m[1];
+      if (title.includes("信息价格")) {
+        items.push({ title, date, url });
+      }
+    }
+  }
+
   return items;
 }
 
