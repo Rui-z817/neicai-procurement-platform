@@ -14,6 +14,27 @@ const rawData = JSON.parse(
   fs.readFileSync(path.join(__dirname, "..", "data", "parsed_prices.json"), "utf8")
 );
 
+// 读取最新一期的元数据（来自 njszj_info_prices.json）
+let latestMeta = { publishDate: "2026-06-30", pdfUrl: "", year: 2026, month: 6 };
+try {
+  const metaRaw = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "data", "njszj_info_prices.json"), "utf8")
+  );
+  if (metaRaw.latest) {
+    latestMeta.publishDate = metaRaw.latest.date;
+    latestMeta.pdfUrl = metaRaw.latest.pdfUrl;
+    const m = metaRaw.latest.title.match(/(\d{4})年(\d{1,2})月/);
+    if (m) {
+      latestMeta.year = parseInt(m[1]);
+      latestMeta.month = parseInt(m[2]);
+    }
+  }
+} catch (e) {
+  console.warn("⚠️ 未找到 njszj_info_prices.json，使用默认元数据");
+}
+const monthLabel = `${latestMeta.year}年${latestMeta.month}月`;
+const sourceLabel = `南京信息价(${monthLabel})`;
+
 // 从材料名称中分离规格
 function parseMaterialName(fullName) {
   if (!fullName) return { name: "", spec: "" };
@@ -125,12 +146,12 @@ rawData.forEach((row, i) => {
     unit,
     price,
     region: "南京",
-    date: "2026-03",
-    source: "南京信息价(2026年3月)",
+    date: `${latestMeta.year}-${String(latestMeta.month).padStart(2, "0")}`,
+    source: sourceLabel,
     sourceType: "信息价",
     isInfoPrice: true,
-    publishDate: "2026-04-03",
-    pdfUrl: "http://www.njzjxh.cn/NECACMS/upload/files/2026/4/3debaf5c5dc087a4.pdf",
+    publishDate: latestMeta.publishDate,
+    pdfUrl: latestMeta.pdfUrl,
   });
 });
 
@@ -152,7 +173,7 @@ records.slice(0, 15).forEach((r, i) => {
 // 生成TypeScript数据文件
 const tsContent = `// ============================================================
 // 南京信息价PDF解析 - 材料价格数据
-// 数据来源: 南京市二〇二六年三月建设工程材料市场信息价格.pdf
+// 数据来源: 南京市二〇${latestMeta.year}年${latestMeta.month}月建设工程材料市场信息价格.pdf
 // 解析时间: ${new Date().toISOString().slice(0, 10)}
 // 共 ${records.length} 条价格记录
 // ============================================================
