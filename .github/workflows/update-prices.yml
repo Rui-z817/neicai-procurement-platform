@@ -32,8 +32,8 @@ jobs:
       - name: 抓取南京信息价列表
         id: fetch
         run: |
-          echo "→ 开始抓取南京造价协会信息价列表..."
-          node scripts/fetch_njzjxh.cjs || echo "抓取失败，使用现有数据"
+          echo "→ 开始抓取南京市造价站信息价列表..."
+          node scripts/fetch_njszj.cjs || echo "抓取失败，使用现有数据"
           echo "→ 抓取完成"
 
       - name: 下载最新一期PDF
