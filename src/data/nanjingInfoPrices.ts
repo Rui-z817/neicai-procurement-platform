@@ -15,6 +15,21 @@ export interface NanjingInfoPriceRecord extends InfoPrice {
 
 export const nanjingRealInfoPrices: NanjingInfoPriceRecord[] = [
   {
+    "id": "nj-real-2026-06",
+    "region": "南京",
+    "year": 2026,
+    "month": 6,
+    "type": "信息价",
+    "title": "南京市二〇二六年六月建设工程材料市场信息价格",
+    "publishDate": "2026-06-30",
+    "source": "南京市建设工程造价监督站(njszj.cn)",
+    "sourceUrl": "https://www.njszj.cn/zjweb/MessageShow.aspx?Id=1acb0938-e640-435f-a53c-758e44d1ace5",
+    "pdfUrl": "http://www.njszj.cn/ZJMis/MaterialPD/2026/%c4%cf%be%a9%ca%d0%b6%fe%a9%96%b6%fe%c1%f9%c4%ea%c1%f9%d4%c2%bd%a8%c9%e8%b9%a4%b3%cc%b2%c4%c1%cf%ca%d0%b3%a1%d0%c5%cf%a2%bc%db%b8%f1.pdf",
+    "category": "材料信息价",
+    "isOfficial": true,
+    "isReal": true
+  },
+  {
     "id": "nj-real-2026-03",
     "region": "南京",
     "year": 2026,
