@@ -50,6 +50,8 @@ export interface MarketPrice {
   region: string; // 报价地区
   date: string; // 报价日期
   projectType: ProjectType; // 工程类型
+  pdfUrl?: string; // 信息价PDF链接
+  month?: number; // 信息价月份
 }
 
 // 工程类型（用于"最新市场价"标签筛选）
