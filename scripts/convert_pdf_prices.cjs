@@ -197,6 +197,6 @@ export function searchInfoPriceMaterials(keyword: string): InfoPriceMaterial[] {
 }
 `;
 
-const outPath = path.join(__dirname, "src", "data", "infoPriceMaterials.ts");
+const outPath = path.join(__dirname, "..", "src", "data", "infoPriceMaterials.ts");
 fs.writeFileSync(outPath, tsContent, "utf8");
 console.log(`\n✓ 数据文件已生成: ${outPath}`);
