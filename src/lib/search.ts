@@ -85,6 +85,9 @@ function matchInfoKeyword(item: InfoPrice, keyword: string): boolean {
 // ============ 信息价PDF价格 - 搜索逻辑 ============
 // 将信息价PDF解析的价格转换为MarketPrice格式（标注为信息价）
 function infoPriceToMarketPrice(ip: InfoPriceMaterial): MarketPrice {
+  // 从 date 字段（如 "2026-06"）提取月份
+  const monthMatch = ip.date?.match(/(\d{4})[-/](\d{1,2})/);
+  const month = monthMatch ? parseInt(monthMatch[2]) : undefined;
   return {
     id: ip.id,
     materialName: ip.materialName,
@@ -93,7 +96,7 @@ function infoPriceToMarketPrice(ip: InfoPriceMaterial): MarketPrice {
     specs: ip.spec ? [{ key: "规格", value: ip.spec }] : [],
     supplier: {
       id: "nj-info-price",
-      name: "南京市工程造价管理协会",
+      name: "南京市建设工程造价管理协会",
       region: "南京",
       contact: "-",
       level: "官方",
@@ -103,6 +106,8 @@ function infoPriceToMarketPrice(ip: InfoPriceMaterial): MarketPrice {
     region: "南京",
     date: ip.publishDate,
     projectType: ip.projectType as ProjectType,
+    pdfUrl: ip.pdfUrl,
+    month,
   };
 }
 
