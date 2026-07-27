@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Building2, History, Home, LogOut, UserCircle, KeyRound, Users } from "lucide-react";
+import { Search, Building2, History, Home, LogOut, UserCircle, KeyRound, Users, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,13 +19,14 @@ interface HeaderProps {
   onHome: () => void;
   onHistory: () => void;
   onSupplier: () => void;
+  onInternalPrice: () => void;
   currentPage: string;
   session: Session | null;
   onLogout: () => void;
   onChangePassword: () => void;
 }
 
-export function Header({ onSearch, onHome, onHistory, onSupplier, currentPage, session, onLogout, onChangePassword }: HeaderProps) {
+export function Header({ onSearch, onHome, onHistory, onSupplier, onInternalPrice, currentPage, session, onLogout, onChangePassword }: HeaderProps) {
   const [keyword, setKeyword] = useState("");
   const [region, setRegion] = useState("全部");
   const [category, setCategory] = useState("全部");
@@ -79,6 +80,14 @@ export function Header({ onSearch, onHome, onHistory, onSupplier, currentPage, s
               className="text-white hover:bg-white/15 hover:text-white"
             >
               <Users className="w-4 h-4 mr-1" /> 供货商
+            </Button>
+            <Button
+              variant={currentPage === "internal" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={onInternalPrice}
+              className="text-white hover:bg-white/15 hover:text-white"
+            >
+              <Database className="w-4 h-4 mr-1" /> 内部价格
             </Button>
 
             {/* 用户菜单 */}
