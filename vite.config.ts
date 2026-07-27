@@ -4,7 +4,7 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/neicai-procurement-platform/",
+  base: "/",
   plugins: [react()],
   resolve: {
     alias: {
