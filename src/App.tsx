@@ -5,13 +5,14 @@ import { HomePage } from "@/sections/HomePage";
 import { SearchResultsPage } from "@/sections/SearchResultsPage";
 import { HistoryPage } from "@/sections/HistoryPage";
 import { SupplierPage } from "@/sections/SupplierPage";
+import { InternalPricePage } from "@/sections/InternalPricePage";
 import { Footer } from "@/sections/Footer";
 import { LoginPage } from "@/sections/LoginPage";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import type { SearchParams } from "@/types";
 import { getSession, logout, initAccounts, type Session } from "@/lib/auth";
 
-type Page = "home" | "search" | "history" | "supplier";
+type Page = "home" | "search" | "history" | "supplier" | "internal";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -31,6 +32,7 @@ export default function App() {
   const goHome = useCallback(() => setPage("home"), []);
   const goHistory = useCallback(() => setPage("history"), []);
   const goSupplier = useCallback(() => setPage("supplier"), []);
+  const goInternalPrice = useCallback(() => setPage("internal"), []);
 
   const doSearch = useCallback((params: SearchParams) => {
     setSearchParams(params);
@@ -71,6 +73,7 @@ export default function App() {
         onHome={goHome}
         onHistory={goHistory}
         onSupplier={goSupplier}
+        onInternalPrice={goInternalPrice}
         currentPage={page}
         session={session}
         onLogout={handleLogout}
@@ -83,6 +86,7 @@ export default function App() {
         )}
         {page === "history" && <HistoryPage onSearch={doSearch} />}
         {page === "supplier" && <SupplierPage />}
+        {page === "internal" && <InternalPricePage />}
       </main>
       <Footer />
 
