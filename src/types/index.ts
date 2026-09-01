@@ -52,6 +52,8 @@ export interface MarketPrice {
   projectType: ProjectType; // 工程类型
   pdfUrl?: string; // 信息价PDF链接
   month?: number; // 信息价月份
+  sourceType?: "internal" | "info"; // 价格来源：内部价格 / 信息价
+  fileId?: string; // 内部价格关联的报价单文件ID（用于查看/下载）
 }
 
 // 工程类型（用于"最新市场价"标签筛选）

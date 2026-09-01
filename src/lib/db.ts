@@ -1,15 +1,18 @@
 /**
- * 数据层 - 支持 CloudBase 和 IndexedDB 双后端
+ * 数据层 - 支持 服务器API / CloudBase / IndexedDB 三后端
  *
  * 策略：
- * 1. 优先尝试 CloudBase（云端存储，可多设备共享）
- * 2. 失败时自动降级到 IndexedDB（本地存储，免费）
- * 3. 后续可切换到轻量服务器
+ * 1. 优先尝试轻量服务器 API（自有 SQLite 数据库，数据最可靠）
+ * 2. 服务器不可用时降级到 CloudBase（云端存储，可多设备共享）
+ * 3. 都失败时降级到 IndexedDB（本地浏览器存储）
  */
 
 import { openDB, type IDBPDatabase } from "idb";
 
-export type StorageBackend = "cloudbase" | "indexeddb";
+export type StorageBackend = "server" | "cloudbase" | "indexeddb";
+
+// 服务器 API 地址（同源相对路径，Nginx 反代到 127.0.0.1:3000）
+const API_BASE = "/api";
 
 // ============ 类型定义 ============
 
@@ -69,12 +72,46 @@ function genId(): string {
 // ============ 后端选择 ============
 
 let activeBackend: StorageBackend = "indexeddb";
+let serverApiReady = false;
 let cloudbaseApp: any = null;
 let cloudbaseDb: any = null;
 let cloudbaseAuthReady = false;
 let idbInstance: IDBPDatabase | null = null;
 
 const ENV_ID = "procurement-d4gvcntzd8b00b0a6";
+
+/** 带超时的 fetch（访问服务器 API） */
+async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = 8000
+): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 探测服务器 API 是否可用 */
+async function initServerApi(): Promise<boolean> {
+  if (serverApiReady) return true;
+  try {
+    const health = await apiFetch<{ status: string }>("/health", undefined, 2500);
+    serverApiReady = health?.status === "ok";
+    return serverApiReady;
+  } catch {
+    serverApiReady = false;
+    return false;
+  }
+}
 
 async function initCloudBase(): Promise<boolean> {
   if (cloudbaseApp) return true;
@@ -118,11 +155,24 @@ async function getIDB(): Promise<IDBPDatabase> {
 }
 
 async function ensureBackend(): Promise<StorageBackend> {
+  if (activeBackend === "server") return "server";
   if (activeBackend === "cloudbase") return "cloudbase";
-  // 尝试 CloudBase，超时则降级
+  // 优先服务器 API → CloudBase → IndexedDB
+  if (await initServerApi()) {
+    activeBackend = "server";
+    return activeBackend;
+  }
   const ok = await initCloudBase();
   activeBackend = ok ? "cloudbase" : "indexeddb";
   return activeBackend;
+}
+
+/** 服务器 API 失败后的统一降级 */
+async function fallbackFromServer(): Promise<void> {
+  console.warn("服务器 API 不可用，降级到 CloudBase/IndexedDB");
+  serverApiReady = false;
+  const ok = await initCloudBase();
+  activeBackend = ok ? "cloudbase" : "indexeddb";
 }
 
 /** 主动探测后端状态（不切换，只检测） */
@@ -145,12 +195,29 @@ export async function saveFile(
   const id = genId();
   const type = getFileType(file.name, file.type);
 
+  if (backend === "server") {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (parsedText) fd.append("parsedText", parsedText);
+      const stored = await apiFetch<StoredFile>("/files/upload", {
+        method: "POST",
+        body: fd,
+      }, 30000);
+      return { ...stored, type };
+    } catch (e) {
+      console.warn("服务器文件上传失败，降级:", e);
+      await fallbackFromServer();
+      return saveFile(file, parsedText);
+    }
+  }
+
   if (backend === "cloudbase") {
     try {
       const cloudPath = `inquiry-files/${id}-${file.name}`;
       const result = await Promise.race([
         cloudbaseApp.uploadFile({ cloudPath, filePath: file }),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("upload timeout")), 15000)),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("upload timeout")), 10000)),
       ]);
       const stored: StoredFile = {
         id,
@@ -162,7 +229,11 @@ export async function saveFile(
         uploadedAt: Date.now(),
         parsedText,
       };
-      await cloudbaseDb.collection("files").add(stored);
+      // 元数据写入也加超时
+      await Promise.race([
+        cloudbaseDb.collection("files").add(stored),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("metadata timeout")), 5000)),
+      ]);
       return stored;
     } catch (e) {
       console.warn("CloudBase 文件上传失败，降级到 IndexedDB:", e);
@@ -189,6 +260,13 @@ export async function saveFile(
 
 export async function getFile(id: string): Promise<StoredFile | undefined> {
   const backend = await ensureBackend();
+  if (backend === "server") {
+    try {
+      return await apiFetch<StoredFile>(`/files/${id}`);
+    } catch {
+      // 降级
+    }
+  }
   if (backend === "cloudbase") {
     try {
       const res = await cloudbaseDb.collection("files").where({ id }).limit(1).get();
@@ -202,6 +280,7 @@ export async function getFile(id: string): Promise<StoredFile | undefined> {
 }
 
 export async function getFileURL(stored: StoredFile): Promise<string> {
+  // 服务器存储的文件直接返回同源下载地址
   if (stored.cloudPath) {
     const res = await cloudbaseApp.getTempFileURL({ fileList: [stored.cloudPath] });
     return res.fileList[0]?.tempFileURL || "";
@@ -209,11 +288,21 @@ export async function getFileURL(stored: StoredFile): Promise<string> {
   if (stored.blob) {
     return URL.createObjectURL(stored.blob);
   }
+  if (stored.id && activeBackend === "server") {
+    return `${API_BASE}/files/${stored.id}/download`;
+  }
   return "";
 }
 
 export async function getAllFiles(): Promise<StoredFile[]> {
   const backend = await ensureBackend();
+  if (backend === "server") {
+    try {
+      return await apiFetch<StoredFile[]>("/files");
+    } catch {
+      // 降级
+    }
+  }
   if (backend === "cloudbase") {
     try {
       const res = await cloudbaseDb
@@ -232,6 +321,14 @@ export async function getAllFiles(): Promise<StoredFile[]> {
 
 export async function deleteFile(id: string): Promise<void> {
   const backend = await ensureBackend();
+  if (backend === "server") {
+    try {
+      await apiFetch(`/files/${id}`, { method: "DELETE" });
+      return;
+    } catch {
+      // 降级
+    }
+  }
   if (backend === "cloudbase") {
     try {
       const file = await getFile(id);
@@ -246,6 +343,39 @@ export async function deleteFile(id: string): Promise<void> {
   }
   const db = await getIDB();
   await db.delete("files", id);
+}
+
+/** 按报价单（文件）批量删除：删除文件及其关联的全部价格记录（需删除密码） */
+export async function deleteFileWithPrices(
+  fileId: string,
+  password: string
+): Promise<{ priceDeleted: number }> {
+  const backend = await ensureBackend();
+  if (backend === "server") {
+    try {
+      return await apiFetch<{ priceDeleted: number }>(
+        `/files/${fileId}?withPrices=1`,
+        {
+          method: "DELETE",
+          headers: { "x-delete-password": password },
+        }
+      );
+    } catch (e: any) {
+      // 密码错误必须明确报错，禁止降级绕过密码校验
+      if (String(e?.message || "").includes("403")) {
+        throw new Error("删除密码错误");
+      }
+      console.warn("服务器批量删除失败，降级为逐条删除:", e);
+    }
+  }
+  // 降级路径：逐条删除关联价格，再删文件
+  const prices = await getAllPrices();
+  const related = prices.filter((p) => p.fileId === fileId);
+  for (const p of related) {
+    await deletePrice(p.id);
+  }
+  await deleteFile(fileId);
+  return { priceDeleted: related.length };
 }
 
 export async function getStorageUsage(): Promise<{
@@ -266,7 +396,18 @@ export async function savePrice(
 ): Promise<InternalPrice> {
   const record: InternalPrice = { ...price, id: genId(), createdAt: Date.now() };
   const backend = await ensureBackend();
-  if (backend === "cloudbase") {
+  if (backend === "server") {
+    try {
+      return await apiFetch<InternalPrice>("/prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(record),
+      });
+    } catch {
+      await fallbackFromServer();
+    }
+  }
+  if (activeBackend === "cloudbase") {
     try {
       await cloudbaseDb.collection("prices").add(record);
       return record;
@@ -283,14 +424,41 @@ export async function batchSavePrices(
   prices: Array<Omit<InternalPrice, "id" | "createdAt">>
 ): Promise<number> {
   const backend = await ensureBackend();
-  if (backend === "cloudbase") {
+  if (backend === "server") {
     try {
-      for (const p of prices) {
-        const record: InternalPrice = { ...p, id: genId(), createdAt: Date.now() };
-        await cloudbaseDb.collection("prices").add(record);
-      }
+      const res = await apiFetch<{ saved: number }>("/prices/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prices),
+      }, 30000);
+      return res.saved;
+    } catch (e) {
+      console.warn("服务器批量写入失败，降级:", e);
+      await fallbackFromServer();
+    }
+  }
+  if (activeBackend === "cloudbase") {
+    try {
+      // 并行写入 + 每条加 8 秒超时，超时则整体降级
+      const records: InternalPrice[] = prices.map((p) => ({
+        ...p,
+        id: genId(),
+        createdAt: Date.now(),
+      }));
+
+      const addWithTimeout = async (record: InternalPrice) => {
+        return Promise.race([
+          cloudbaseDb.collection("prices").add(record),
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error("add timeout")), 8000)
+          ),
+        ]);
+      };
+
+      await Promise.all(records.map(addWithTimeout));
       return prices.length;
-    } catch {
+    } catch (e) {
+      console.warn("CloudBase 批量写入失败，降级到 IndexedDB:", e);
       activeBackend = "indexeddb";
     }
   }
@@ -306,7 +474,14 @@ export async function batchSavePrices(
 
 export async function getAllPrices(): Promise<InternalPrice[]> {
   const backend = await ensureBackend();
-  if (backend === "cloudbase") {
+  if (backend === "server") {
+    try {
+      return await apiFetch<InternalPrice[]>("/prices");
+    } catch {
+      await fallbackFromServer();
+    }
+  }
+  if (activeBackend === "cloudbase") {
     try {
       const res = await cloudbaseDb
         .collection("prices")
@@ -325,7 +500,15 @@ export async function getAllPrices(): Promise<InternalPrice[]> {
 
 export async function deletePrice(id: string): Promise<void> {
   const backend = await ensureBackend();
-  if (backend === "cloudbase") {
+  if (backend === "server") {
+    try {
+      await apiFetch(`/prices/${id}`, { method: "DELETE" });
+      return;
+    } catch {
+      await fallbackFromServer();
+    }
+  }
+  if (activeBackend === "cloudbase") {
     try {
       await cloudbaseDb.collection("prices").where({ id }).remove();
       return;
@@ -372,7 +555,20 @@ export async function exportAllData(): Promise<Blob> {
 
 export async function clearAllData(): Promise<void> {
   const backend = await ensureBackend();
-  if (backend === "cloudbase") {
+  if (backend === "server") {
+    try {
+      const prices = await apiFetch<InternalPrice[]>("/prices");
+      await Promise.all(
+        prices.map((p) =>
+          apiFetch(`/prices/${p.id}`, { method: "DELETE" }).catch(() => {})
+        )
+      );
+      return;
+    } catch {
+      await fallbackFromServer();
+    }
+  }
+  if (activeBackend === "cloudbase") {
     try {
       await cloudbaseDb.collection("prices").where({}).remove();
       await cloudbaseDb.collection("files").where({}).remove();

@@ -16,6 +16,7 @@ import {
   suppliers,
 } from "@/data/materials";
 import { apiConfig, delay } from "@/lib/api";
+import { getAllPrices, type InternalPrice } from "@/lib/db";
 import { getNanjingInfoPrices as genNanjingLocal } from "@/lib/nanjingInfoPrice";
 import { infoPriceMaterials, type InfoPriceMaterial } from "@/data/infoPriceMaterials";
 import type {
@@ -138,6 +139,43 @@ export function searchInfoPriceMaterialsLocal(params: SearchParams): MarketPrice
     .map(infoPriceToMarketPrice);
 }
 
+// ============ 内部价格 - 搜索逻辑 ============
+// 将用户上传的内部价格转换为 MarketPrice 格式（标注为内部价格，优先显示）
+function internalPriceToMarketPrice(ip: InternalPrice): MarketPrice {
+  return {
+    id: `internal-${ip.id}`,
+    materialName: ip.materialName,
+    categoryId: "other",
+    brand: ip.brand || "内部报价",
+    specs: ip.spec ? [{ key: "规格", value: ip.spec }] : [],
+    supplier: {
+      id: "internal-price",
+      name: ip.supplier || "内部询价",
+      region: ip.region || "南京",
+      contact: "-",
+      level: "内部",
+    },
+    price: ip.price,
+    unit: ip.unit,
+    region: ip.region || "南京",
+    date: ip.inquiryDate,
+    projectType: (ip.projectType as ProjectType) || "其它材料",
+    sourceType: "internal",
+    fileId: ip.fileId || undefined,
+  };
+}
+
+function matchInternalKeyword(item: InternalPrice, keyword: string): boolean {
+  if (!keyword) return true;
+  const kw = keyword.toLowerCase().trim();
+  if (!kw) return true;
+  if (item.materialName.toLowerCase().includes(kw)) return true;
+  if (item.brand.toLowerCase().includes(kw)) return true;
+  if (item.supplier.toLowerCase().includes(kw)) return true;
+  if (item.spec.toLowerCase().includes(kw)) return true;
+  return false;
+}
+
 // ============ 搜索材料（市场价+信息价） ============
 export function searchMaterialsLocal(params: SearchParams): {
   marketPrices: MarketPrice[];
@@ -201,7 +239,27 @@ export async function searchMaterials(
   }
   // 模拟模式：带网络延迟
   await delay();
-  return searchMaterialsLocal(params);
+  const result = searchMaterialsLocal(params);
+
+  // 合并内部价格（用户上传的真实询价数据），优先显示在信息价之前
+  try {
+    const internalPrices = await getAllPrices();
+    const matchedInternal = internalPrices
+      .filter((p) => matchInternalKeyword(p, params.keyword || ""))
+      .map(internalPriceToMarketPrice);
+    if (matchedInternal.length > 0) {
+      // 内部价格在前，其余结果（市场价/信息价）按日期降序在后
+      result.marketPrices = [
+        ...matchedInternal,
+        ...result.marketPrices.filter((m) => m.sourceType !== "internal"),
+      ];
+      result.total = result.marketPrices.length;
+    }
+  } catch (e) {
+    console.warn("内部价格搜索失败，仅显示市场价/信息价:", e);
+  }
+
+  return result;
 }
 
 // ============ 获取最新市场价 ============

@@ -14,20 +14,33 @@ import {
   HardDrive,
   Download,
   AlertTriangle,
+  CheckCircle2,
+  FileX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { UploadDialog } from "@/components/UploadDialog";
 import {
   getAllPrices,
   deletePrice,
+  getAllFiles,
+  deleteFileWithPrices,
   getFile,
   getFileURL,
   getStorageUsage,
   exportAllData,
   detectBackend,
   type InternalPrice,
+  type StoredFile,
   type StorageBackend,
 } from "@/lib/db";
 
@@ -39,6 +52,12 @@ export function InternalPricePage() {
   const [storage, setStorage] = useState({ fileCount: 0, totalSize: 0 });
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
   const [backend, setBackend] = useState<StorageBackend>("indexeddb");
+  const [deleteByFileOpen, setDeleteByFileOpen] = useState(false);
+  const [filesList, setFilesList] = useState<StoredFile[]>([]);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [deletingFile, setDeletingFile] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -91,6 +110,42 @@ export function InternalPricePage() {
     URL.revokeObjectURL(url);
   };
 
+  // 打开"按报价单删除"弹窗，加载文件列表
+  const openDeleteByFile = async () => {
+    setSelectedFileId(null);
+    setDeletePassword("");
+    setDeleteError(null);
+    setDeleteByFileOpen(true);
+    const files = await getAllFiles();
+    setFilesList(files);
+  };
+
+  // 统计某文件关联的价格条数
+  const countPricesByFile = (fileId: string) =>
+    prices.filter((p) => p.fileId === fileId).length;
+
+  // 执行按报价单批量删除（需密码）
+  const handleDeleteByFile = async () => {
+    if (!selectedFileId) return;
+    if (deletePassword !== "123456") {
+      setDeleteError("删除密码错误，请重新输入");
+      return;
+    }
+    setDeletingFile(true);
+    setDeleteError(null);
+    try {
+      await deleteFileWithPrices(selectedFileId, deletePassword);
+      setDeleteByFileOpen(false);
+      setSelectedFileId(null);
+      setDeletePassword("");
+      await loadData();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setDeletingFile(false);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes}B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
@@ -121,6 +176,14 @@ export function InternalPricePage() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport} className="text-xs">
               <Download className="w-3.5 h-3.5 mr-1" /> 导出备份
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openDeleteByFile}
+              className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+            >
+              <FileX className="w-3.5 h-3.5 mr-1" /> 按报价单删除
             </Button>
             <Button
               onClick={() => setUploadOpen(true)}
@@ -166,23 +229,35 @@ export function InternalPricePage() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Database className={`w-4 h-4 ${backend === "cloudbase" ? "text-green-500" : "text-purple-500"}`} />
+            <Database className={`w-4 h-4 ${backend === "server" ? "text-blue-500" : backend === "cloudbase" ? "text-green-500" : "text-purple-500"}`} />
             <span className="text-xs text-slate-500">存储方式</span>
           </div>
           <div className="text-sm font-bold text-slate-900">
-            {backend === "cloudbase" ? "腾讯云 CloudBase" : "本地浏览器"}
+            {backend === "server" ? "云服务器数据库" : backend === "cloudbase" ? "腾讯云 CloudBase" : "本地浏览器"}
           </div>
           <div className="text-xs text-slate-400">
-            {backend === "cloudbase" ? "云端同步（多设备共享）" : "IndexedDB（已自动降级）"}
+            {backend === "server" ? "SQLite 持久存储（重装不丢失）" : backend === "cloudbase" ? "云端同步（多设备共享）" : "IndexedDB（已自动降级）"}
           </div>
         </div>
       </div>
 
-      {/* 备份提醒 */}
-      {prices.length > 0 && (
+      {/* 存储状态提示（按实际后端显示） */}
+      {prices.length > 0 && backend === "server" && (
+        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs">
+          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+          数据已存储在云服务器数据库中，清除浏览器缓存不会丢失，任何设备访问都是同一份数据。
+        </div>
+      )}
+      {prices.length > 0 && backend === "cloudbase" && (
+        <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs">
+          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+          数据已存储在腾讯云 CloudBase，清除浏览器缓存不会丢失（云服务器不可用时的备用通道）。
+        </div>
+      )}
+      {prices.length > 0 && backend === "indexeddb" && (
         <div className="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-          数据存储在本地浏览器中，清除浏览器缓存会丢失数据。建议定期点击「导出备份」。
+          服务器暂时不可用，数据暂存在本地浏览器中，清除浏览器缓存会丢失数据。建议定期点击「导出备份」，恢复后再上传。
         </div>
       )}
 
@@ -314,6 +389,106 @@ export function InternalPricePage() {
         onOpenChange={setUploadOpen}
         onUploaded={loadData}
       />
+
+      {/* 按报价单批量删除弹窗 */}
+      <Dialog open={deleteByFileOpen} onOpenChange={(v) => { if (!deletingFile) setDeleteByFileOpen(v); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileX className="w-5 h-5 text-red-500" />
+              按报价单批量删除
+            </DialogTitle>
+            <DialogDescription>
+              选择一个报价单，将其文件及关联的全部价格记录一并删除。此操作不可恢复。
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* 文件列表 */}
+          <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-100 rounded-lg p-2">
+            {filesList.length === 0 && (
+              <div className="text-xs text-slate-400 text-center py-6">暂无存储文件</div>
+            )}
+            {filesList.map((f) => {
+              const count = countPricesByFile(f.id);
+              const selected = selectedFileId === f.id;
+              return (
+                <div
+                  key={f.id}
+                  onClick={() => setSelectedFileId(selected ? null : f.id)}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
+                    selected
+                      ? "border-red-300 bg-red-50"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input type="radio" checked={selected} readOnly className="accent-red-500" />
+                  {f.type === "pdf" ? (
+                    <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                  ) : f.type === "excel" ? (
+                    <FileSpreadsheet className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  ) : f.type === "image" ? (
+                    <ImageIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-slate-700 truncate">{f.name}</div>
+                    <div className="text-[10px] text-slate-400">
+                      {(f.size / 1024).toFixed(0)}KB · 关联 {count} 条价格
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 删除密码 */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-500 flex-shrink-0 font-medium">删除密码：</label>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(null); }}
+                placeholder="请输入删除密码"
+                className="h-8 text-xs w-40"
+                disabled={!selectedFileId}
+              />
+            </div>
+            {deleteError && (
+              <div className="flex items-center gap-1.5 text-xs text-red-500">
+                <AlertTriangle className="w-3.5 h-3.5" /> {deleteError}
+              </div>
+            )}
+            {selectedFileId && !deleteError && (
+              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2">
+                将删除报价单及其关联的 {countPricesByFile(selectedFileId)} 条价格记录，不可恢复！
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteByFileOpen(false)} disabled={deletingFile}>
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteByFile}
+              disabled={!selectedFileId || deletePassword.length === 0 || deletingFile}
+            >
+              {deletingFile ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> 删除中...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-1.5" /> 确认删除
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

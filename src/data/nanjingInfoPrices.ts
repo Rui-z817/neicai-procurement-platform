@@ -15,6 +15,21 @@ export interface NanjingInfoPriceRecord extends InfoPrice {
 
 export const nanjingRealInfoPrices: NanjingInfoPriceRecord[] = [
   {
+    "id": "nj-real-2026-07",
+    "region": "南京",
+    "year": 2026,
+    "month": 7,
+    "type": "信息价",
+    "title": "南京市二〇二六年七月建设工程材料市场信息价格",
+    "publishDate": "2026-07-31",
+    "source": "南京市建设工程造价监督站(njszj.cn)",
+    "sourceUrl": "https://www.njszj.cn/zjweb/MessageShow.aspx?Id=f6578b60-b147-43f7-b5a5-ff10b8545af4",
+    "pdfUrl": "http://www.njszj.cn/ZJMis/MaterialPD/2026/%c4%cf%be%a9%ca%d0%b6%fe%a9%96%b6%fe%c1%f9%c4%ea%c6%df%d4%c2%bd%a8%c9%e8%b9%a4%b3%cc%b2%c4%c1%cf%ca%d0%b3%a1%d0%c5%cf%a2%bc%db%b8%f1.pdf",
+    "category": "材料信息价",
+    "isOfficial": true,
+    "isReal": true
+  },
+  {
     "id": "nj-real-2026-06",
     "region": "南京",
     "year": 2026,
@@ -25,6 +40,36 @@ export const nanjingRealInfoPrices: NanjingInfoPriceRecord[] = [
     "source": "南京市建设工程造价监督站(njszj.cn)",
     "sourceUrl": "https://www.njszj.cn/zjweb/MessageShow.aspx?Id=1acb0938-e640-435f-a53c-758e44d1ace5",
     "pdfUrl": "http://www.njszj.cn/ZJMis/MaterialPD/2026/%c4%cf%be%a9%ca%d0%b6%fe%a9%96%b6%fe%c1%f9%c4%ea%c1%f9%d4%c2%bd%a8%c9%e8%b9%a4%b3%cc%b2%c4%c1%cf%ca%d0%b3%a1%d0%c5%cf%a2%bc%db%b8%f1.pdf",
+    "category": "材料信息价",
+    "isOfficial": true,
+    "isReal": true
+  },
+  {
+    "id": "nj-real-2026-05",
+    "region": "南京",
+    "year": 2026,
+    "month": 5,
+    "type": "信息价",
+    "title": "南京市二〇二六年五月建设工程材料市场信息价格",
+    "publishDate": "2026-05-29",
+    "source": "南京市建设工程造价监督站(njszj.cn)",
+    "sourceUrl": "https://www.njszj.cn/zjweb/MessageShow.aspx?Id=c481dc5c-314e-4edb-a259-d85e0cb2954f",
+    "pdfUrl": "http://www.njszj.cn/ZJMis/MaterialPD/2026/%C4%CF%BE%A9%CA%D0%B6%FE%A9%96%B6%FE%C1%F9%C4%EA%CE%E5%D4%C2%BD%A8%C9%E8%B9%A4%B3%CC%B2%C4%C1%CF%CA%D0%B3%A1%D0%C5%CF%A2%BC%DB%B8%F1.pdf",
+    "category": "材料信息价",
+    "isOfficial": true,
+    "isReal": true
+  },
+  {
+    "id": "nj-real-2026-04",
+    "region": "南京",
+    "year": 2026,
+    "month": 4,
+    "type": "信息价",
+    "title": "南京市二〇二六年四月建设工程材料市场信息价格",
+    "publishDate": "2026-04-30",
+    "source": "南京市建设工程造价监督站(njszj.cn)",
+    "sourceUrl": "https://www.njszj.cn/zjweb/MessageShow.aspx?Id=5ac54041-3c2b-46f9-ad0f-b78ab90c5e1c",
+    "pdfUrl": "http://www.njszj.cn/ZJMis/MaterialPD/2026/%C4%CF%BE%A9%CA%D0%B6%FE%A9%96%B6%FE%C1%F9%C4%EA%CB%C4%D4%C2%BD%A8%C9%E8%B9%A4%B3%CC%B2%C4%C1%CF%CA%D0%B3%A1%D0%C5%CF%A2%BC%DB%B8%F1.pdf",
     "category": "材料信息价",
     "isOfficial": true,
     "isReal": true
@@ -1528,7 +1573,7 @@ export const nanjingRealInfoPrices: NanjingInfoPriceRecord[] = [
     "category": "材料信息价",
     "isOfficial": true,
     "isReal": true
-  }
+  },
 ];
 
 // 获取所有可用年份

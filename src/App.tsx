@@ -88,7 +88,13 @@ export default function App() {
         {page === "supplier" && <SupplierPage />}
         {page === "internal" && <InternalPricePage />}
       </main>
-      <Footer />
+      <Footer
+        onHome={goHome}
+        onSearch={doSearch}
+        onSupplier={goSupplier}
+        onInternal={goInternalPrice}
+        onHistory={goHistory}
+      />
 
       <ChangePasswordDialog
         open={passwordOpen}

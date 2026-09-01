@@ -23,10 +23,17 @@ try {
   if (metaRaw.latest) {
     latestMeta.publishDate = metaRaw.latest.date;
     latestMeta.pdfUrl = metaRaw.latest.pdfUrl;
-    const m = metaRaw.latest.title.match(/(\d{4})年(\d{1,2})月/);
-    if (m) {
-      latestMeta.year = parseInt(m[1]);
-      latestMeta.month = parseInt(m[2]);
+    // 标题是中文数字（如"二〇二六年七月"），从发布日期提取年月更可靠
+    const dm = (metaRaw.latest.date || "").match(/(\d{4})-(\d{2})/);
+    if (dm) {
+      latestMeta.year = parseInt(dm[1]);
+      latestMeta.month = parseInt(dm[2]);
+    } else {
+      const m = metaRaw.latest.title.match(/(\d{4})年(\d{1,2})月/);
+      if (m) {
+        latestMeta.year = parseInt(m[1]);
+        latestMeta.month = parseInt(m[2]);
+      }
     }
   }
 } catch (e) {

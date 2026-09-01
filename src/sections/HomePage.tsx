@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, FileText, ChevronRight, Search, Loader2, AlertCircle } from "lucide-react";
+import { TrendingUp, FileText, ChevronRight, Search, Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import { categories } from "@/data/materials";
-import { projectTypes, getLatestMarketPrices, getLatestInfoPrices, getLatestByProjectType } from "@/lib/search";
+import { projectTypes, getLatestMarketPrices, getLatestByProjectType } from "@/lib/search";
+import { infoPriceSites } from "@/data/infoPriceSites";
 import { PriceCard } from "@/components/PriceCard";
 import { InfoPriceSection } from "@/components/InfoPriceSection";
-import type { SearchParams, MarketPrice, InfoPrice, ProjectType } from "@/types";
+import type { SearchParams, MarketPrice, ProjectType } from "@/types";
 import { generateReportPDF } from "@/lib/pdf";
 
 interface HomePageProps {
@@ -14,10 +15,8 @@ interface HomePageProps {
 export function HomePage({ onSearch }: HomePageProps) {
   const [activeTab, setActiveTab] = useState<ProjectType>(projectTypes[0]);
   const [latestMarket, setLatestMarket] = useState<MarketPrice[]>([]);
-  const [latestInfo, setLatestInfo] = useState<InfoPrice[]>([]);
   const [tabMarket, setTabMarket] = useState<MarketPrice[]>([]);
   const [loadingMarket, setLoadingMarket] = useState(true);
-  const [loadingInfo, setLoadingInfo] = useState(true);
   const [loadingTab, setLoadingTab] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,17 +28,6 @@ export function HomePage({ onSearch }: HomePageProps) {
       .then((data) => { if (!cancelled) setLatestMarket(data); })
       .catch((e) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setLoadingMarket(false); });
-    return () => { cancelled = true; };
-  }, []);
-
-  // 加载最新信息价
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingInfo(true);
-    getLatestInfoPrices(12)
-      .then((data) => { if (!cancelled) setLatestInfo(data); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingInfo(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -179,43 +167,50 @@ export function HomePage({ onSearch }: HomePageProps) {
 
       {/* 双栏：最新信息价 + 热门材料市场价 */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* 最新信息价 */}
+        {/* 最新信息价 - 全国官方公示网站导航 */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              最新信息价
+              各地信息价官方公示网站
             </h2>
-            <button
-              onClick={() => onSearch({ keyword: "", region: "全部" })}
-              className="text-sm text-primary hover:underline flex items-center gap-0.5"
-            >
-              更多 <ChevronRight className="w-4 h-4" />
-            </button>
+            <span className="text-xs text-slate-400">点击直达官网</span>
           </div>
-          {loadingInfo ? (
-            <div className="py-10 flex flex-col items-center justify-center text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin mb-2 text-primary" />
-              <span className="text-sm">加载信息价...</span>
-            </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {latestInfo.map((info) => (
-                <li
-                  key={info.id}
-                  className="px-5 py-2.5 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between group"
+          <ul className="divide-y divide-slate-100 max-h-[560px] overflow-y-auto">
+            {infoPriceSites.map((site) => (
+              <li key={site.region}>
+                <a
+                  href={site.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-5 py-2.5 hover:bg-slate-50 transition flex items-center justify-between group"
+                  title={`打开${site.region}官方信息价网站`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                    <span className="text-sm text-slate-700 group-hover:text-primary truncate">
-                      {info.title}
+                    <span className="text-sm text-slate-700 group-hover:text-primary font-medium shrink-0">
+                      {site.region}
+                    </span>
+                    {site.tag && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${
+                          site.tag === "主数据源"
+                            ? "bg-green-100 text-green-700 border-green-200"
+                            : "bg-blue-50 text-blue-600 border-blue-200"
+                        }`}
+                      >
+                        {site.tag}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-400 truncate group-hover:text-slate-500">
+                      {site.name}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-400 shrink-0 ml-2">{info.publishDate}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-primary shrink-0 ml-2" />
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* 热门材料市场价 */}

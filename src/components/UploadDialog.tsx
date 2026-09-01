@@ -48,6 +48,7 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
   const [files, setFiles] = useState<UploadedFileState[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [inquiryDate, setInquiryDate] = useState("");
   const dragRef = useRef<HTMLDivElement>(null);
 
   const handleFiles = useCallback(async (fileList: File[]) => {
@@ -195,7 +196,7 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
             price: parseFloat(row.price.replace(/,/g, "")) || 0,
             unit: row.unit || "元",
             region: "",
-            inquiryDate: new Date().toISOString().slice(0, 10),
+            inquiryDate: inquiryDate || new Date().toISOString().slice(0, 10),
             projectType: "其它材料",
             notes: `从文件解析：${fileName}`,
             fileId,
@@ -240,7 +241,7 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(v) => { if (!uploading) { onOpenChange(v); if (!v) setFiles([]); } }}>
+      <Dialog open={open} onOpenChange={(v) => { if (!uploading) { onOpenChange(v); if (!v) { setFiles([]); setInquiryDate(""); } } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -272,6 +273,18 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
             <Upload className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm text-slate-600 font-medium">点击或拖拽文件到此处上传</p>
             <p className="text-xs text-slate-400 mt-1">支持 PDF、Excel、图片格式</p>
+          </div>
+
+          {/* 询价日期（本批文件通用） */}
+          <div className="flex items-center gap-2 mt-3 px-1">
+            <label className="text-xs text-slate-500 flex-shrink-0 font-medium">询价日期：</label>
+            <input
+              type="date"
+              value={inquiryDate}
+              onChange={(e) => setInquiryDate(e.target.value)}
+              className="h-8 px-2 rounded border border-slate-200 bg-white text-xs text-slate-700 focus:outline-none focus:border-[hsl(217,72%,40%)]"
+            />
+            <span className="text-xs text-slate-400">不填则默认为今天</span>
           </div>
 
           {/* 已上传文件列表 */}
@@ -444,7 +457,7 @@ export function UploadDialog({ open, onOpenChange, onUploaded }: UploadDialogPro
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => { onOpenChange(false); setFiles([]); }}
+              onClick={() => { onOpenChange(false); setFiles([]); setInquiryDate(""); }}
               disabled={uploading}
             >
               取消
